@@ -171,3 +171,195 @@ We can also move the logic into a function in our seller component.
 Directives are attributes we add to our html elements which will dynamically affect the DOM. Using directives, we can control the way the DOM is generated. There are many built in directives in angular. **ngIf** is used to display an element conditionally. When **ngSwitch** is used, the elements that match the case will be displayed, or also using a default case. **ngFor** is used to iterate a given DOM element based on each element in an array. **ngNonBindable** is used to tell angular not to bind or compile a part of our page. **ngStyle** and **ngClass** are directives useful for styling. For this section, we created a new project _directives_.
 
 #### ngIf
+
+We can use ngIf to dynamically display an element.
+
+```typescript
+export class IfComponent implements OnInit {
+  x: number;
+  y: number;
+  s: string;
+
+  constructor() {
+    this.x = 10;
+    this.y = 20;
+    this.s = "success";
+  }
+
+  myFunc() {
+    return true;
+  }
+
+  ngOnInit(): void {}
+}
+```
+
+```html
+<b *ngIf="true">Serialize Yourself.</b><br />
+<b *ngIf="x < y">Conditional Logic</b><br />
+<b *ngIf="s == 'succ'">Text is Success</b><br />
+<b *ngIf="myFunc()">Function call</b><br />
+```
+
+#### ngSwitch
+
+We can use ngSwitch to render according to a case. We can also specify a default element using ngSwitchDefault in case none of the cases satisfy.
+
+```html
+<div [ngSwitch]="myCase">
+  <div *ngSwitchCase="1">Case 1</div>
+  <div *ngSwitchCase="2">Case 2</div>
+  <div *ngSwitchCase="3">Case 3</div>
+  <div *ngSwitchCase="4">Case 4</div>
+  <div *ngSwitchDefault>Default Case</div>
+</div>
+```
+
+```typescript
+@Component({
+  selector: "app-switch",
+  templateUrl: "./switch.component.html",
+  styleUrls: ["./switch.component.css"],
+})
+export class SwitchComponent implements OnInit {
+  myCase: number;
+
+  constructor() {
+    this.myCase = 7;
+  }
+
+  ngOnInit(): void {}
+}
+```
+
+#### ngFor
+
+Using ngFor, we can iterate through an array. We can also iterate through an array of objects as well.
+
+```html
+<div *ngFor="let course of courses">
+  <b>{{ course }}</b>
+</div>
+
+<br />
+
+<table>
+  <thead>
+    <tr>
+      <td>First Name</td>
+      <td>Last Name</td>
+      <td>Score</td>
+    </tr>
+  </thead>
+  <tr *ngFor="let student of students">
+    <td>{{ student.fName }}</td>
+    <td>{{ student.lName }}</td>
+    <td>{{ student.score }}</td>
+  </tr>
+</table>
+```
+
+```typescript
+export class ForComponent implements OnInit {
+  courses: string[];
+  students: any[];
+
+  constructor() {
+    this.courses = ["Angular", "React", "Node"];
+    this.students = [
+      {
+        fName: "John",
+        lName: "Doe",
+        score: 90,
+      },
+      {
+        fName: "Bob",
+        lName: "Doge",
+        score: 100,
+      },
+    ];
+  }
+
+  ngOnInit(): void {}
+}
+```
+
+#### ngNonBindable
+
+ngNonBindable is used so that angular will not bind the template. This will return `The code that renders the above is: {{ course }}`
+
+```html
+<div ngNoneBindable>The code that renders the above is: {{ course }}</div>
+```
+
+#### ngStyle
+
+We can use the following syntax to set a single css property.
+
+```html
+<td [style.color]="'red'">{{ student.fName }}</td>
+<td [style.color]="'yellow'">{{ student.lName }}</td>
+<td [style.color]="'blue'">{{ student.score }}</td>
+```
+
+To style multiple properties, we can use ngStyle. It is important to wrap the background-color in '' because it is not a single word.
+
+```html
+<td [ngStyle]="{ color: 'red', 'background-color': 'blue' }">First Name</td>
+```
+
+We can also style dynamically with ngStyle.
+
+```html
+<td [ngStyle]="{ color: color }">Last Name</td>
+<td [style.font-size.px]="fontSize">Score</td>
+```
+
+```typescript
+export class ForComponent implements OnInit {
+  color: string;
+  fontSize: string;
+
+  constructor() {
+    this.color = 'green';
+    this.fontSize = '40';
+
+  ngOnInit(): void {}
+}
+```
+
+#### ngClass
+
+The ngClass directive allows us to assign a css class to an html element. We assign an object literal as a value to ngClass. This object literal contains the css class name as a key and a boolean as a value.
+
+```html
+<td [ngClass]="{ tdata: true }">{{ student.score }}</td>
+```
+
+```css
+.tdata {
+  font-size: 80px;
+}
+```
+
+We can also use ngClass to dynamically pass in an object value. This applies the class tdata to the element whenever useTdata is true.
+
+```html
+<td [ngClass]="classObj">{{ student.score }}</td>
+```
+
+```typescript
+export class ForComponent implements OnInit {
+  courses: string[];
+  students: any[];
+  color: string;
+  fontSize: string;
+  useTdata: boolean;
+  classObj: Object;
+
+  constructor() {
+    this.useTdata = true;
+    this.classObj = {
+      tdata: this.useTdata,
+    };
+```

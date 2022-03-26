@@ -1,0 +1,23 @@
+<div *ngFor="let course of courses">
+  <b>{{ course }}</b>
+  <div ngNoneBindable>The code that renders the above is: {{ course }}</div>
+</div>
+
+<br />
+
+<table>
+  <thead>
+    <tr>
+      <td [ngStyle]="{ color: 'red', 'background-color': 'blue' }">
+        First Name
+      </td>
+      <td [ngStyle]="{ color: color }">Last Name</td>
+      <td [style.font-size.px]="fontSize">Score</td>
+    </tr>
+  </thead>
+  <tr *ngFor="let student of students">
+    <td [style.color]="'red'">{{ student.fName }}</td>
+    <td [style.color]="'yellow'">{{ student.lName }}</td>
+    <td [ngClass]="classObj">{{ student.score }}</td>
+  </tr>
+</table>
