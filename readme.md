@@ -165,3 +165,5 @@ We can also move the logic into a function in our seller component.
     this.hide = !this.hide;
   }
 ```
+
+## Directives
