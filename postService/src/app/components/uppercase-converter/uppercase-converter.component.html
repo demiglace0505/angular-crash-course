@@ -1,0 +1,4 @@
+<input type="text" [(ngModel)]="my_message" />
+<button (click)="convert({ message: my_message })">Submit</button>
+<br />
+<h1 style="color: red">{{ result | json }}</h1>

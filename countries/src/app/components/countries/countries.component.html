@@ -1,0 +1,16 @@
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Capital</th>
+      <th>Region</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let c of data">
+      <td>{{ c.name }}</td>
+      <td>{{ c.capital }}</td>
+      <td>{{ c.region }}</td>
+    </tr>
+  </tbody>
+</table>

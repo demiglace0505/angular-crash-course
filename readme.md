@@ -363,3 +363,243 @@ export class ForComponent implements OnInit {
       tdata: this.useTdata,
     };
 ```
+
+## Services
+
+When we build huge applications, the code is spread across components. For example, a Login Component HAS A Login Service. To use the Login Service in our Login Component, we can instantiate it using **new**. Instead of manually injecting the dependency, we can delegate that responsibility to Angular. Automatically at run time, the Login Service will be created and injected into the Login Component as a field.
+
+To do dependency injection in Angular, we first need to register the dependency in our **NgModule** or **app.module.ts** in the _providers_ section.
+
+```typescript
+@NgModule({
+  providers: [LoginService]
+})
+```
+
+To inject, we provide a constructor in the component that needs the dependency.
+
+```typescript
+import { LoginService } from "../services/user.service";
+class LoginComponent {
+  constructor(private loginService: LoginService);
+}
+```
+
+In this section, we will be working with the _countries_ project. We can create a service using `ng generate service services/countries`. The **@Injectable** decorator tells angular that the service class can be created at runtime and should be injected into other components or classes when required. The _providedIn_ property means that angular should use the root dependency injection module. In the following snippet, we inject **HttpClient** into CountrieService. HttpClient comes with various methods to perform http requests.
+
+```typescript
+@Injectable({
+  providedIn: "root",
+})
+export class CountriesService {
+  constructor(private _httpClient: HttpClient) {}
+
+  public getCountries(): any {
+    return this._httpClient.get(
+      "http://api.countrylayer.com/v2/all?access_key=API_KEY"
+    );
+  }
+}
+```
+
+It is important to ntoe that the HttpClient methods returns an **Observable**. In our countries component, we need to import the CountriesService and inject it using the constructor. To retrieve the data from an observable, we can use **subscribe()** method.
+
+```typescript
+@Component({
+  selector: "app-countries",
+  templateUrl: "./countries.component.html",
+  styleUrls: ["./countries.component.css"],
+})
+export class CountriesComponent implements OnInit {
+  public data: any;
+
+  constructor(private _service: CountriesService) {}
+
+  ngOnInit(): void {
+    return this._service.getCountries().subscribe(
+      (response: any) => {
+        this.data = response;
+        console.log(this.data);
+      },
+      (error: any) => {
+        console.error(error);
+      }
+    );
+  }
+}
+```
+
+Afterwards, we need to import HttpClientModule and CountriesService into our app.module. This way, angular will know that our project will need the HttpClientModule. Angular will also create objects of CountriesService and inject it wherever required.
+
+```typescript
+@NgModule({
+  declarations: [AppComponent, CountriesComponent],
+  imports: [BrowserModule, HttpClientModule],
+  providers: [CountriesService],
+  bootstrap: [AppComponent],
+})
+export class AppModule {}
+```
+
+We use the following template
+
+```html
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Capital</th>
+      <th>Region</th>
+      <th>Alt Spellings</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let c of data">
+      <td>{{ c.name }}</td>
+      <td>{{ c.capital }}</td>
+      <td>{{ c.region }}</td>
+      <td>{{ c.altSpellings }}</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+#### Posting Data
+
+In this section, we will be working on the _postService_ application which can send in a string to a rest API, and the rest service will be invoked wherein the string will be capitalized. This way, we will learn how to make a POST request. For the service, we start by creating a method convertToUppercase(). This method takes an object and returns a json back.
+
+```typescript
+export class UppercaseConverterService {
+  constructor(private _httpClient: HttpClient) {}
+
+  public convertToUppercase(obj: any): any {
+    return this._httpClient.post(
+      "http://test-routes.herokuapp.com/test/uppercase",
+      obj
+    );
+  }
+}
+```
+
+Afterwards, we implement the component.
+
+```typescript
+export class UppercaseConverterComponent implements OnInit {
+  public result: any;
+  public my_message: any;
+
+  constructor(private _service: UppercaseConverterService) {}
+
+  ngOnInit(): void {}
+
+  public convert(obj: any): any {
+    this._service.convertToUppercase(obj).subscribe(
+      (res: any) => (this.result = res),
+      (err: HttpErrorResponse) => {
+        console.error(err);
+      }
+    );
+  }
+}
+```
+
+We use the following html template. Here we use input property binding to a model object. **ngModel** directive takes the value of the text field and assign it to the _my_message_ variable. We then take that value and pass it into the click event binder of the button which fires the _convert()_ method. Using the pipe ` | json`, we can format the result beautifully.
+
+```html
+<input type="text" [(ngModel)]="my_message" />
+<button (click)="convert({ message: my_message })">Submit</button>
+<br />
+<h1 style="color: red">{{ result | json }}</h1>
+```
+
+Afterwards, we need to update app.module and add the imports for HttpClientModule and FormsModule. We need to also provide the UppercaseConverterService.
+
+```typescript
+@NgModule({
+  declarations: [AppComponent, UppercaseConverterComponent],
+  imports: [BrowserModule, FormsModule, HttpClientModule],
+  providers: [UppercaseConverterService],
+  bootstrap: [UppercaseConverterComponent],
+})
+export class AppModule {}
+```
+
+#### Using Multiple Services
+
+In this section, we will be working with _multipleServices_. Here we will be creating two services.
+
+```typescript
+export class CustomerServiceService {
+  constructor(private _httpClient: HttpClient) {}
+
+  public getCustomers(): any {
+    return this._httpClient.get(
+      "https://www.w3schools.com/angular/customers.php"
+    );
+  }
+}
+
+export class HelloServiceService {
+  constructor(private _httpClient: HttpClient) {}
+
+  public helloService(): any {
+    return this._httpClient.get("http://test-routes.herokuapp.com/test/hello");
+  }
+}
+```
+
+We then use the services in our component and invoke the methods.
+
+```typescript
+export class MultipleServicesComponent implements OnInit {
+  public helloResponse: any;
+  public customerResponse: any;
+
+  constructor(
+    private _helloService: HelloServiceService,
+    private _customerService: CustomerServiceService
+  ) {}
+
+  ngOnInit(): void {
+    this._helloService.helloService().subscribe((res: any) => {
+      this.helloResponse = res;
+    });
+    this._customerService.getCustomers().subscribe((res: any) => {
+      this.customerResponse = res;
+    });
+  }
+}
+```
+
+We will use the following html template. Here we use a json pipe to render json beautifully.
+
+```html
+<h1>{{ helloResponse | json }}</h1>
+<h2>{{ customerResponse | json }}</h2>
+```
+
+Then we configure our app.module
+
+```typescript
+@NgModule({
+  declarations: [AppComponent, MultipleServicesComponent],
+  imports: [BrowserModule, HttpClientModule],
+  providers: [HelloServiceService, CustomerServiceService],
+  bootstrap: [MultipleServicesComponent],
+})
+export class AppModule {}
+```
+
+We can make parallel calls using **forkJoin** from rxjs. This forkJoin method takes an array of service calls
+
+```typescript
+  ngOnInit(): void {
+    forkJoin([
+      this._helloService.helloService(),
+      this._customerService.getCustomers(),
+    ]).subscribe((response) => {
+      this.helloResponse = response[0];
+      this.customerResponse = response[1];
+    });
+  }
+```
