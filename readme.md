@@ -12,7 +12,7 @@ Angular is a SPA framework built with HTML and TypeScript. **Components** are a 
 
 ## Components
 
-A component is the key feature of Angular. Using which, we can create html-like elements. A component is a combination of the model and a view. To create a component, we annotate our model class with **@Component**. Within the annotation, we pass in the _selector_ attribute wherein we give the name of our html element. The _templateUrl_ attribute is the html file responsible for rendering the UI for that component. In the following snippet, the model class MyComponent would hold the data and logic, and the html will be responsible for rendering a UI.
+A component is the key feature of Angular. Using which, we can create html-like elements. A component is a combination of the model and a view. To create a component, we annotate our model class with **@Component**. Within the annotation, we pass in the _selector_ attribute wherein we give the name of our html element. The _templateUrl_ attribute is the html file responsible for rendering the UI for that component. In the following snippet, the model class MyComponent would hold the data and logic, and the html will be responsible for rendering a UI. For this section, we work on the _angularBasics_ project.
 
 ```typescript
 @Component({
@@ -167,3 +167,7 @@ We can also move the logic into a function in our seller component.
 ```
 
 ## Directives
+
+Directives are attributes we add to our html elements which will dynamically affect the DOM. Using directives, we can control the way the DOM is generated. There are many built in directives in angular. **ngIf** is used to display an element conditionally. When **ngSwitch** is used, the elements that match the case will be displayed, or also using a default case. **ngFor** is used to iterate a given DOM element based on each element in an array. **ngNonBindable** is used to tell angular not to bind or compile a part of our page. **ngStyle** and **ngClass** are directives useful for styling. For this section, we created a new project _directives_.
+
+#### ngIf
