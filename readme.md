@@ -603,3 +603,173 @@ We can make parallel calls using **forkJoin** from rxjs. This forkJoin method ta
     });
   }
 ```
+
+## REST API Using ExpressJS
+
+Node is a javascript framework that allows us to create server-side applications using javascript. Expressjs is a Node module. The important modules that will be used in this section are express, and mysql for connecting with the database.
+
+We start with creating the database in MySQL and then creating the config to establish a database connection. `db_connection.js` will be responsible for creating the database connection and `db_properties.js` will store the connection information. We create the anonymous function getConnection which returns a mysql connection.
+
+```sql
+use mydb;
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '1234';
+create table product(id int,name varchar(20),description varchar(20),price int);
+
+select * from product;
+```
+
+```javascript
+// db_properties.js
+module.exports = {
+  host: "localhost",
+  user: "root",
+  password: "1234",
+  dbName: "mydb",
+};
+
+// db_connection.js
+const dbProps = require("./db_properties");
+const mysql = require("mysql");
+
+module.exports = {
+  getConnection: () => {
+    return mysql.createConnection({
+      host: dbProps.host,
+      user: dbProps.user,
+      password: dbProps.password,
+      database: dbProps.dbName,
+    });
+  },
+};
+```
+
+Afterwards, we create the controller for the REST api. The controller will use the dbConnection module and express router to create routes for our RESTful endpoint methods. Using the connection object, we can call the **connect()** method and we also create a router object using **express.Router()**. We then start on implementing the READ endpoint.
+
+#### Read
+
+```javascript
+const dbcon = require("../config/db_connection");
+const express = require("express");
+
+const connection = dbcon.getConnection();
+
+connection.connect();
+const router = express.Router();
+
+router.get("/", (req, res) => {
+  connection.query("select * from product", (err, records, fields) => {
+    if (err) {
+      console.error(err);
+    } else {
+      res.send(records);
+    }
+  });
+});
+
+module.exports = router;
+```
+
+To initialize our REST application, we can create a bootstrap file `server.js` that will kickstart our application. The first step is to configure the path to our RESTful API using express **use()**. The uri `/api/products` will be mapped to our product controller. Using **listen()** we can start the server on port 8080.
+
+```javascript
+const express = require("express");
+
+const app = express();
+
+const productApi = require("./controllers/product.controller");
+app.use("/api/products", productApi);
+
+app.listen(8080);
+console.log("Server up and running on PORT 8080");
+```
+
+To test, we can run `node server.js`. Now we can try using postman to make a GET request to `localhost:8080/api/products`. At this point, we will receive an empty array as a response.
+
+We can retrieve a specific product by creating an endpoint with a path parameter. We can use the id that we will be receiving from the `req` params.
+
+```javascript
+router.get("/:id", (req, res) => {
+  connection.query(
+    `select * from product where id=${req.params.id}`,
+    (err, records, fields) => {
+      if (err) {
+        console.error(err);
+      } else {
+        res.send(records);
+      }
+    }
+  );
+});
+```
+
+#### Create
+
+For the create operation, we need to use express router **post()** method.
+
+```javascript
+router.post("/", (req, res) => {
+  const id = req.body.id;
+  const name = req.body.name;
+  const description = req.body.description;
+  const price = req.body.price;
+  connection.query(
+    `insert into product values(${id}, '${name}', '${description}', ${price})`,
+    (err, result) => {
+      if (err) {
+        console.error(err);
+      } else {
+        res.send({ insert: "success" });
+      }
+    }
+  );
+});
+```
+
+We can use express.json() to deserialize the json, thereby removing the need to use body-parser.
+
+```javascript
+const app = express();
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+```
+
+#### Update
+
+For the update operation, we can use the following
+
+```javascript
+router.put("/", (req, res) => {
+  const id = req.body.id;
+  const name = req.body.name;
+  const price = req.body.price;
+  connection.query(
+    `update product set name='${name}', price=${price} where id=${id}`,
+    (err, result) => {
+      if (err) {
+        console.error(err);
+      } else {
+        res.send({ update: "success" });
+      }
+    }
+  );
+});
+```
+
+#### Delete
+
+Finally, for delete operations, we can use the **delete()** method.
+
+```javascript
+router.delete("/:id", (req, res) => {
+  connection.query(
+    `delete from product where id=${req.params.id}`,
+    (err, records, fields) => {
+      if (err) {
+        console.error(err);
+      } else {
+        res.send({ delete: "success" });
+      }
+    }
+  );
+});
+```
