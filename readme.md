@@ -1351,3 +1351,118 @@ In the template, we can define two way binding with `[(ngModel)]="propertyName"`
 ```
 
 This time, once we refresh the page, we can see that the input field for the first field will be prepopulated with the value we defined in the model property firstName. Using this, we can pre-populate values.
+
+## Custom Directives
+
+We can create our own custom directives as well. For this section, we work on the _customdirectives_ proejct. To create a directive, we use the command `ng g d <name>` which will create the directive and update the app module. Each custom directive is marked with the **@Directive** annotation and within it, the selector is how we use the directive in our template.
+
+Once we create the directive, we can use the TemplateRef and ViewContainerRef to manipulate the dom. We do this by injecting in the constructor. Afterwards, we can proceed with implementing the logic. In this case, we display an element if a condition evaluates to true. We use **set** and pass into it a parameter boolean. The **ViewContainerRef** is the container to which we add views and its **createEmbeddedView()** method can be used to create a dom element dynamically. The **TemplateRef** always points to the html component on which the directive is being used. The **@Input()** decorator is used to receive an input.
+
+```typescript
+@Directive({
+  selector: "[appMyIf]",
+})
+export class MyIfDirective {
+  constructor(
+    private templateRef: TemplateRef<any>,
+    private container: ViewContainerRef
+  ) {}
+
+  @Input() set appMyIf(condition: boolean) {
+    if (condition) {
+      this.container.createEmbeddedView(this.templateRef);
+    } else {
+      this.container.clear();
+    }
+  }
+}
+```
+
+We can then proceed our custom directive in the html template.
+
+```html
+<div *appMyIf="true">
+  <b>Serialize Yourself</b>
+</div>
+```
+
+We created another custom directive wherein we display an html element a number of times, similar to ngFor. This time, we specify a custom name _myCustomLoop_ hence we need to specify in the @Input decorator our selector.
+
+```typescript
+@Directive({
+  selector: "[appMyLoop]",
+})
+export class MyLoopDirective {
+  constructor(
+    private container: ViewContainerRef,
+    private templateRef: TemplateRef<any>
+  ) {}
+
+  @Input("appMyLoop") set myCustomLoop(num: number) {
+    for (let i = 0; i < num; i++) {
+      this.container.createEmbeddedView(this.templateRef);
+    }
+  }
+}
+```
+
+```html
+<ul>
+  <li *appMyLoop="4">Close the World.</li>
+</ul>
+```
+
+#### Attribute Directive
+
+We can also create our own custom Attribute Directives. The directive we create will apply some styles to our html element. For an attribute directive, we inject **ElementRef** into the constructor. This points to the current element for which the directive is being used.
+
+```typescript
+@Directive({
+  selector: "[appMyStyles]",
+})
+export class MyStylesDirective {
+  constructor(private elRef: ElementRef) {
+    elRef.nativeElement.style.color = "red";
+    elRef.nativeElement.style.backgroundColor = "yellow";
+    elRef.nativeElement.style.fontSize = "30px";
+  }
+}
+```
+
+```html
+<h1 appMyStyles>.txEn eht nepO</h1>
+```
+
+We can also pass values to the attribute directive and use it to style. We first need to define a field in our directive. For this field, we need to use the **@Input()** decorator. We need to use the directive after the template is rendered, so we use the ngAfterViewInit() lifecycle method.
+
+```typescript
+export class MyStylesDirective {
+  @Input() fontSize!: string;
+
+  constructor(private elRef: ElementRef) {
+    elRef.nativeElement.style.color = "red";
+    elRef.nativeElement.style.backgroundColor = "yellow";
+    elRef.nativeElement.style.fontSize = "30px";
+  }
+
+  ngAfterViewinit(): void {
+    this.elRef.nativeElement.style.fontSize = this.fontSize;
+  }
+}
+```
+
+```html
+<h1 appMyStyles fontSize="80px">.txEn eht nepO</h1>
+```
+
+We can also use handle html events and bind methods to them using our attribute directive. We can do so using the **@HostListener()** decorator which listens to an event.
+
+```typescript
+  @HostListener('mouseenter') onMouseEnter() {
+    this.elRef.nativeElement.style.backgroundColor = 'blue';
+  }
+
+  @HostListener('mouseleave') onMouseLeave() {
+    this.elRef.nativeElement.style.backgroundColor = 'green';
+  }
+```
