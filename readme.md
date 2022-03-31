@@ -1272,4 +1272,82 @@ When validation fails, angular will bind the errors to that particular field, wh
 
 Template Driven forms are itnernally Model Driven, but they are driven by the directives in the html instead of in the model. In Template Driven, we start with html using directives and we will drive the model from there. The FormsModule gives us the **ngForm** object which internally creates a FormGroup object. To associate a FormControl to this FormGroup, we use the **ngModel** and **name** directives. ngModel creates a FormControl object for the input and name will map it to a property on the model.
 
-For this section, we will be working on the templateForms project.
+For this section, we will be working on the templateForms project. We start by adding **FormsModule** in our app.module imports. Afterwards, we create the template form. We use `#` to define a template driven form. For the form fields, we use **ngModel** to perform two way binding and to tell angular that it should create a FormControl with the name we assigned to the _name_ property and bind it to the model.
+
+For the subgroup, we use the **ngModelGroup** directive. For submit, we use **(ngSubmit)** wherein we pass the form information.
+
+```html
+<div class="container">
+  <form #personForm="ngForm" (ngSubmit)="handleSubmit(personForm.value)">
+    <div>
+      <label>First Name</label>
+      <input type="text" name="firstName" ngModel />
+
+      <label>Last Name</label>
+      <input type="text" name="lastName" ngModel />
+
+      <label>Email</label>
+      <input type="text" name="email" ngModel />
+
+      <label>Gender</label>
+      <input type="radio" name="gender" value="male" ngModel />Male
+      <input type="radio" name="gender" value="female" ngModel />Female
+    </div>
+
+    <div ngModelGroup="address">
+      <label>Street</label>
+      <input type="text" name="street" ngModel />
+      <label>City</label>
+      <input type="text" name="city" ngModel />
+      <label>Country</label>
+      <select name="country" ngModel>
+        <option value="usa">USA</option>
+        <option value="japan">Japan</option>
+        <option value="philippines">Philippines</option>
+      </select>
+    </div>
+    <div>
+      <input type="submit" />
+    </div>
+  </form>
+</div>
+```
+
+```typescript
+export class AppComponent {
+  title = "templateForms";
+
+  public handleSubmit(data: any) {
+    console.log(data);
+  }
+}
+```
+
+#### Two-Way Binding
+
+We need to define the properties in the model for our application. Each of the field represents an input in the ui, and when submitted it should be bound to these properties.
+
+```typescript
+export class AppComponent {
+  public firstName: string = "Doge";
+  public lastName!: string;
+  public email!: string;
+  public street!: string;
+  public city!: string;
+  public country!: string;
+  public gender!: string;
+
+  public handleSubmit(data: any) {
+    console.log(data);
+  }
+}
+```
+
+In the template, we can define two way binding with `[(ngModel)]="propertyName"`
+
+```html
+<label>First Name</label>
+<input type="text" name="firstName" [(ngModel)]="firstName" />
+```
+
+This time, once we refresh the page, we can see that the input field for the first field will be prepopulated with the value we defined in the model property firstName. Using this, we can pre-populate values.
