@@ -1138,12 +1138,138 @@ export class ReversepipePipe implements PipeTransform {
 <h1>{{ "Open the nExt." | reversepipe }}</h1>
 ```
 
-## Forms
-
-In angular, there are two approaches: model driven (reactive) and template driven forms.
-
-#### Reactive Forms
+## Reactive Forms
 
 In model driven forms, we create the model first before the html. We then bind the html form to the model using directives. We create Reactive Forms using the **ReactiveFormsModule** which uses **FormGroup** and **FormControl** objects. The FormGroup represents an html form and the FormControl represents the input elements we use within an html form. The FormGroup and FormControl will have a state wherein the FormControl will maintain the state of each input element which also allows us to do validation. In the same manner, the state of the FormGroup is the state of the collection of all FormControls.
 
-In this section, we will create a form that will retrieve the name, email, address and gender of the person. The project used will be under _reactiveForms_.
+In this section, we will create a form that will retrieve the name, email, address and gender of the person. The project used will be under _reactiveForms_. We start with creating the model. We define a FormGroup constructor, wherein we define our FormControls. For the address property, we define it as a subgroup within which we define street, city, country.
+
+```typescript
+export class AppComponent {
+  public personForm!: FormGroup;
+  public countries: string[] = ["USA", "Japan", "Philippines"];
+
+  ngOnInit() {
+    this.personForm = new FormGroup({
+      firstName: new FormControl(),
+      lastName: new FormControl(),
+      email: new FormControl(),
+      gender: new FormControl(),
+      address: new FormGroup({
+        street: new FormControl(),
+        city: new FormControl(),
+        country: new FormControl(),
+      }),
+    });
+  }
+
+  handleSubmit() {
+    console.log(this.personForm.value);
+  }
+}
+```
+
+We then make sure that we include **ReactiveFormsModule** in our NgModule import.
+
+```typescript
+imports: [BrowserModule, ReactiveFormsModule],
+```
+
+Afterwards, we can proceed with creating the view. Here we used bootstrap. We bind the form element to the form object we defined in our model class using the **[formGroup]** directive. To bind an input to our model, we use **formControlName**. We use **formGroupName** to bind a subgroup, in this case, address. The onSubmit handler will be defined in the form tag.
+
+```html
+<div class="container">
+  <form [formGroup]="personForm" (ngSubmit)="handleSubmit()">
+    <div class="form-group">
+      <label>First Name: </label>
+      <input type="text" class="form-control" formControlName="firstName" />
+    </div>
+    <div class="form-group">
+      <label>Last Name: </label>
+      <input type="text" class="form-control" formControlName="lastName" />
+    </div>
+    <div class="form-group">
+      <label>Email: </label>
+      <input type="text" class="form-control" formControlName="email" />
+    </div>
+    <div class="form-group">
+      <label>Gender: </label>
+      <input
+        type="radio"
+        class="form-control"
+        value="male"
+        formControlName="gender"
+      />Male
+      <input
+        type="radio"
+        class="form-control"
+        value="female"
+        formControlName="gender"
+      />Female
+    </div>
+
+    <div class="form-group" formGroupName="address">
+      <div class="form-group">
+        <label>Street: </label>
+        <input type="text" class="form-control" formControlName="street" />
+      </div>
+      <div class="form-group">
+        <label>City: </label>
+        <input type="text" class="form-control" formControlName="city" />
+      </div>
+      <div class="form-group">
+        <label>Country: </label>
+        <select type="text" class="form-control" formControlName="country">
+          <option *ngFor="let country of countries" value="{{ country }}">
+            {{ country }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <input type="submit" class="btn btn-success" />
+      </div>
+    </div>
+  </form>
+</div>
+```
+
+#### Default Values and Validation
+
+We can also set default values using our model class using the FormControl constructor. The second parameter of the constructor is an array of validators.
+
+```typescript
+      firstName: new FormControl('Doge', [
+        Validators.required,
+        Validators.minLength(3),
+        Validators.maxLength(10),
+      ]),
+```
+
+When validation fails, angular will bind the errors to that particular field, which we can access in our html page.
+
+```html
+<div
+  class="alert alert-danger"
+  *ngIf="personForm.controls['firstName'].hasError('required')"
+>
+  First Name cannot be empty
+</div>
+<div
+  class="alert alert-danger"
+  *ngIf="personForm.controls['firstName'].hasError('minlength')"
+>
+  Minimum three characters
+</div>
+<div
+  class="alert alert-danger"
+  *ngIf="personForm.controls['firstName'].hasError('maxlength')"
+>
+  Maximum of ten characters
+</div>
+```
+
+## Template Driven Forms
+
+Template Driven forms are itnernally Model Driven, but they are driven by the directives in the html instead of in the model. In Template Driven, we start with html using directives and we will drive the model from there. The FormsModule gives us the **ngForm** object which internally creates a FormGroup object. To associate a FormControl to this FormGroup, we use the **ngModel** and **name** directives. ngModel creates a FormControl object for the input and name will map it to a property on the model.
+
+For this section, we will be working on the templateForms project.
