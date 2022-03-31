@@ -1139,3 +1139,11 @@ export class ReversepipePipe implements PipeTransform {
 ```
 
 ## Forms
+
+In angular, there are two approaches: model driven (reactive) and template driven forms.
+
+#### Reactive Forms
+
+In model driven forms, we create the model first before the html. We then bind the html form to the model using directives. We create Reactive Forms using the **ReactiveFormsModule** which uses **FormGroup** and **FormControl** objects. The FormGroup represents an html form and the FormControl represents the input elements we use within an html form. The FormGroup and FormControl will have a state wherein the FormControl will maintain the state of each input element which also allows us to do validation. In the same manner, the state of the FormGroup is the state of the collection of all FormControls.
+
+In this section, we will create a form that will retrieve the name, email, address and gender of the person. The project used will be under _reactiveForms_.
