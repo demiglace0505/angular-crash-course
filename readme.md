@@ -1019,3 +1019,123 @@ We can use the routes in our html template at this point. Here we use the **rout
 
 <router-outlet></router-outlet>
 ```
+
+## Pipes
+
+Pipes are used to transform data in our html template files. We can also format data inside our typescript model files if we want to use them in multiple places. There are three different text pipes: titlecase, uppercase, lowercase. The **date** pipe can be used to format the date type. It expects a string pattern or a preset string.
+
+```html
+<!-- 01-04-2022 -->
+<h1>{{ myDate | date: 'dd-MM-yy'}}</h1>
+<!-- 01-04-22 -->
+<h1>{{ myDate | date: 'dd-MM-yy'}}</h1>
+<!-- 4/1/22 -->
+<h1>{{ myDate | date: "shortDate" }}</h1>
+```
+
+The **currency** pipe, helps us format numeric values as money. It expects a three character code for the country
+
+```html
+<!-- ¥1,200 -->
+<h1>{{ myMoney | currency: "JPY" }}</h1>
+```
+
+The **json** pipe converts a javascript object into json string.
+
+```html
+<!-- { "name": "Doge", "salary": 1000 } -->
+<h1>{{ myObj | json }}</h1>
+```
+
+The **number** pipe uses the following syntax: `number:"{minIntDigits.{minDecDigits}-{maxDecDigits}}"`
+
+```html
+<!-- myNumber: number = 1000.12345; -->
+<!-- 01,000.123 -->
+<h1>{{ myNumber | number:'5.2-3' }}</h1>
+```
+
+The **percent** pipe converts a given number into percentage and appends the % symbol. We can also use the formatting from the number pipe.
+
+```html
+<!-- 350% -->
+<h1>{{ stock | percent }}</h1>
+<!-- 350.0% -->
+<h1>{{ stock | percent: "3.1-2" }}</h1>
+```
+
+The **slice** pipe is used on array to slice it according to the starting index and ending index. A negative value can be used to indicate an offset from the end. We can also use the slice in a for loop.
+
+```html
+<!-- numbers: number[] = [10, 20, 30, 40, 50]; -->
+<!-- 30,40 -->
+<h1>{{ numbers | slice: 2:4 }}</h1>
+<!-- 304050 -->
+<b *ngFor="let v of numbers | slice: 2">{{ v }}</b>
+```
+
+#### async pipe
+
+An async pipe is very useful when we are dealing with promises or observables. We can directly use the promises returned from a backend call in the html template. We first write out a function call that returns a promise
+
+```typescript
+  constructor() {
+    this.getPromise().then((v) => (this.promiseResponse = v));
+  }
+
+  getPromise() {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => resolve('Hello Doge'), 2000);
+    });
+  }
+```
+
+```html
+<h1>{{ promiseResponse }}</h1>
+```
+
+We can use async pipes instead to deal with the promise directly in our html template. This way, the amount of code we write in the model class is reduced.
+
+```typescript
+  promise: Promise<any>;
+
+  constructor() {
+    this.promise = this.getPromise();
+  }
+
+  getPromise() {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => resolve('Hello Doge'), 2000);
+    });
+  }
+```
+
+```html
+<h1>{{ promise | async }}</h1>
+```
+
+#### Custom Pipe
+
+In this section, we create a pipe that reverses a string. To create a pipe, we use `ng generate pipe <name>`. This command automatically creates the file, and also adds the pipe to our app's declarations. Every pipe is a typescript class that implements PipeTransform from angular.
+
+```typescript
+@Pipe({
+  name: "reversepipe",
+})
+export class ReversepipePipe implements PipeTransform {
+  transform(input: string): any {
+    let data = "";
+    for (let i = 0; i < input.length; i++) {
+      data = input[i] + data;
+    }
+    return data;
+  }
+}
+```
+
+```html
+<!-- .txEn eht nepO -->
+<h1>{{ "Open the nExt." | reversepipe }}</h1>
+```
+
+## Forms
