@@ -675,6 +675,19 @@ To initialize our REST application, we can create a bootstrap file `server.js` t
 const express = require("express");
 
 const app = express();
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// cors
+app.use(function (req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Acces-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE");
+  next();
+});
 
 const productApi = require("./controllers/product.controller");
 app.use("/api/products", productApi);
@@ -772,4 +785,237 @@ router.delete("/:id", (req, res) => {
     }
   );
 });
+```
+
+## Angular Client and Routing
+
+In this section, we created an Angular client which will be consuming the restful api created in the previous section. We start with creating the service.
+
+```typescript
+export class ProductDataService {
+  url: string = "localhost:8080/api/products/";
+
+  constructor(private _httpClient: HttpClient) {}
+
+  public getProducts(): any {
+    return this._httpClient.get(this.url);
+  }
+
+  public getProduct(id: number): any {
+    return this._httpClient.get(`${this.url}${id}`);
+  }
+
+  public create(product: any): any {
+    return this._httpClient.post(this.url, product);
+  }
+
+  public update(product: any): any {
+    return this._httpClient.put(this.url, product);
+  }
+
+  public delete(id: number): any {
+    return this._httpClient.delete(`${this.url}${id}`);
+  }
+}
+```
+
+Afterwards we create the component and view. For the components, we split each operation into its own component.
+
+```typescript
+export class AppComponent {
+  public products: any;
+  constructor(private _service: ProductDataService) {}
+
+  ngOnInit() {
+    this._service.getProducts().subscribe((res: any) => {
+      this.products = res;
+    });
+  }
+}
+
+export class CreateComponent implements OnInit {
+  public createResponse: any;
+  public id!: number;
+  public name!: string;
+  public description!: string;
+  public price!: number;
+  constructor(private _service: ProductDataService) {}
+
+  ngOnInit(): void {}
+
+  public createProduct(product: any) {
+    this._service.create(product).subscribe((res: any) => {
+      this.createResponse = res;
+    });
+  }
+}
+
+export class UpdateComponent implements OnInit {
+  public updateResponse: any;
+  public id!: number;
+  public name!: string;
+  public price!: number;
+  constructor(private _service: ProductDataService) {}
+
+  ngOnInit(): void {}
+
+  public updateProduct(product: any) {
+    this._service.update(product).subscribe((res: any) => {
+      this.updateResponse = res;
+    });
+  }
+}
+
+export class FetchComponent implements OnInit {
+  public getProductResponse: any;
+  public id!: number;
+  constructor(private _service: ProductDataService) {}
+
+  ngOnInit(): void {}
+
+  public getProduct(id: number) {
+    this._service.getProduct(id).subscribe((res: any) => {
+      this.getProductResponse = res;
+    });
+  }
+}
+
+export class DeleteComponent implements OnInit {
+  public deleteResponse: any;
+  public id!: number;
+  constructor(private _service: ProductDataService) {}
+
+  ngOnInit(): void {}
+
+  public deleteProduct(id: number) {
+    this._service.delete(id).subscribe((res: any) => {
+      this.deleteResponse = res;
+    });
+  }
+}
+```
+
+```html
+<h1>Create Product</h1>
+Id: <input type="number" [(ngModel)]="id" /> <br />
+Name: <input type="text" [(ngModel)]="name" /> <br />
+Description: <input type="text" [(ngModel)]="description" /> <br />
+Price: <input type="number" [(ngModel)]="price" /> <br />
+<button
+  (click)="
+    createProduct({
+      id: id,
+      name: name,
+      description: description,
+      price: price
+    })
+  "
+>
+  Create
+</button>
+
+<h1>{{ createResponse | json }}</h1>
+```
+
+```html
+<h1>Delete Product</h1>
+Id: <input type="number" [(ngModel)]="id" /> <br />
+<button (click)="deleteProduct(id)">Delete Product</button>
+
+<h1>{{ deleteResponse | json }}</h1>
+```
+
+```html
+<h1>Fetch Product</h1>
+Id: <input type="number" [(ngModel)]="id" /> <br />
+<button (click)="getProduct(id)">Get Product</button>
+
+<h1>{{ getProductResponse | json }}</h1>
+```
+
+```html
+<h1>Update Product</h1>
+Id: <input type="number" (ngModel)="(id)" /> <br />
+Name: <input type="text" (ngModel)="(name)" /> <br />
+Price: <input type="number" (ngModel)="(price)" /> <br />
+<button
+  (click)="
+    updateProduct({
+      id: id,
+      name: name,
+      price: price
+    })
+  "
+>
+  Update
+</button>
+
+<h1>{{ updateResponse | json }}</h1>
+```
+
+We make sure to update our configuration as well
+
+```typescript
+@NgModule({
+  declarations: [
+    AppComponent,
+    CreateComponent,
+    UpdateComponent,
+    FetchComponent,
+    DeleteComponent,
+  ],
+  imports: [BrowserModule, HttpClientModule, FormsModule],
+  providers: [ProductDataService],
+  bootstrap: [AppComponent],
+})
+```
+
+At this point, all methods are crammed into one component and there are no routing.
+
+#### Routing
+
+Routing is what applications do when a user navigates from webpage to webpage. Routing in angular is achieved dusing @angular/RouterModule. The **Routes** represents all the navigation links in our application. **RouterOutlet** component shows angualr where to place the content of each route. **RouterLink** is used to add links to our html pages.
+
+We can implement routing by following 3 steps:
+
+1. Create routing.module.ts
+2. Create <router-outlet> in HTML
+3. Import routing.module.ts into AppModule
+
+We start by defining a routes array which is of type **Routes** in our routing.module.ts. To configure the router itself, we need to annotate the class with **@NgModule()**. In here, we define an import for **RouterModule** which will initialize all the routes. The _pathMatch: full_ property means that the url should exactly match the route.
+
+```typescript
+const routes: Routes = [
+  { path: "", redirectTo: "", pathMatch: "full" },
+  { path: "create", component: CreateComponent },
+  { path: "update", component: UpdateComponent },
+  { path: "fetch", component: FetchComponent },
+  { path: "delete", component: DeleteComponent },
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+})
+export class AppRouterModule {}
+```
+
+Afterwards we configure the app.module.ts to include an import for the router module.
+
+```typescript
+imports: [BrowserModule, HttpClientModule, FormsModule, AppRouterModule],
+```
+
+We can use the routes in our html template at this point. Here we use the **routerLink** directive from angular. The **router-outlet** is responsible for resolving the links.
+
+```html
+<h1>Products:</h1>
+<h1>{{ products | json }}</h1>
+
+<a [routerLink]="'/create'">Create Product</a><br />
+<a [routerLink]="'/update'">Update Product</a><br />
+<a [routerLink]="'/fetch'">Fetch Product</a><br />
+<a [routerLink]="'/delete'">Delete Product</a><br />
+
+<router-outlet></router-outlet>
 ```

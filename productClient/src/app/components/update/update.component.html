@@ -1,0 +1,17 @@
+<h1>Update Product</h1>
+Id: <input type="number" (ngModel)="(id)" /> <br />
+Name: <input type="text" (ngModel)="(name)" /> <br />
+Price: <input type="number" (ngModel)="(price)" /> <br />
+<button
+  (click)="
+    updateProduct({
+      id: id,
+      name: name,
+      price: price
+    })
+  "
+>
+  Update
+</button>
+
+<h1>{{ updateResponse | json }}</h1>
