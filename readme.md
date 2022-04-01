@@ -1466,3 +1466,362 @@ We can also use handle html events and bind methods to them using our attribute 
     this.elRef.nativeElement.style.backgroundColor = 'green';
   }
 ```
+
+## Use Case Back end
+
+In the ue case for this project, we created a flight reservation and checkin app. Both applications will use a RESTful backend using Java Spring Boot. We start by creating the DB schema in mysql.
+
+```sql
+CREATE DATABASE RESERVATION;
+USE RESERVATION;
+
+CREATE TABLE FLIGHT
+(
+  ID INT  NOT NULL AUTO_INCREMENT,
+  FLIGHT_NUMBER VARCHAR(20)  NOT NULL,
+  OPERATING_AIRLINES VARCHAR(20)  NOT NULL,
+  DEPARTURE_CITY VARCHAR(20)  NOT NULL,
+  ARRIVAL_CITY VARCHAR(20)  NOT NULL,
+  DATE_OF_DEPARTURE DATE  NOT NULL,
+  ESTIMATED_DEPARTURE_TIME TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (ID)
+);
+
+CREATE TABLE PASSENGER
+(
+  ID         INT NOT NULL AUTO_INCREMENT,
+  FIRST_NAME       VARCHAR(256),
+  LAST_NAME    VARCHAR(256),
+  MIDDLE_NAME   VARCHAR(256),
+  EMAIL VARCHAR(50),
+  PHONE VARCHAR(10),
+  PRIMARY KEY (ID)
+);
+
+CREATE TABLE RESERVATION
+(
+  ID INT NOT NULL AUTO_INCREMENT,
+  CHECKED_IN TINYINT(1),
+  NUMBER_OF_BAGS INT,
+  PASSENGER_ID INT,
+  FLIGHT_ID INT,
+  CREATED TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (ID),
+  FOREIGN KEY (PASSENGER_ID) REFERENCES PASSENGER(ID) ON DELETE CASCADE,
+  FOREIGN KEY (FLIGHT_ID) REFERENCES FLIGHT(ID)
+);
+
+SELECT * FROM PASSENGER ;
+SELECT * FROM FLIGHT;
+SELECT * FROM RESERVATION;
+```
+
+#### Create Entities
+
+Afterwards we create the flight services API using Spring Boot. The necessary dependencies are Spring Web, Spring Data JPA, MySQL Driver. After creating the project, we create the JPA entities that will represent the database tables and their columns. In order for the model class to become JPA entities, we need to mark them with the **Entity** annotation. We also need to mark the id field with **@Id** with a **@GeneratedValue** identity strategy. We can define this in a single abstract entity instead which we map with **@MappedSuperclass**.
+
+We also need to define the relationship between the passenger, flight and reservation. In the database, the reservation uses the passenger and flight id. We need to mark these fields as **@OneToOne** because each reservation will have only one flight and one passenger. This tells the JPA framework that whenever we save a reservation, the flight and passenger information must be saved into the reservation table, and if the passenger does not exist in the database, a row will be created in its table and that primary key will be saved in the reservation table as a foreign key.
+
+```java
+@MappedSuperclass
+public class AbstractEntity {
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private int id;
+}
+
+@Entity
+public class Flight extends AbstractEntity {
+	private String flightNumber;
+	private String operatingAirlines;
+	private String departureCity;
+	private String arrivalCity;
+	private Date dateOfDeparture;
+	private Timestamp estimatedDepartureTime;
+}
+
+@Entity
+public class Passenger extends AbstractEntity {
+	private String firstName;
+	private String lastName;
+	private String middleName;
+	private String email;
+	private String phone;
+}
+
+@Entity
+public class Reservation extends AbstractEntity {
+	private boolean checkedIn;
+	private int numberOfBags;
+	@OneToOne
+	private Flight flight;
+	@OneToOne
+	private Passenger passenger;
+
+	public Flight getFlight() {
+		return flight;
+	}
+}
+```
+
+#### Create Repositories
+
+Afterwards, we proceed with creating the repositories which will perform the CRUD operations against the database. These repositories will be interfaces that extends the **JpaRepository** interface from Spring Data.
+
+```java
+public interface ReservationRepository extends JpaRepository<Reservation, Integer> {
+
+}
+
+public interface PassengerRepository extends JpaRepository<Passenger, Integer> {
+
+}
+
+public interface FlightRepository extends JpaRepository<Flight, Integer> {
+
+}
+```
+
+#### findFlights API
+
+The findFlights method will be used to get a list of flights available from the database. We can proceed with creating the ReservationRestController that uses the repositories we created earlier to access the database. We need to annotate this class with **@RestController** from Spring to make it a RESTful controller. We then autowire our FlightRepository using the **@Autowired** annotation which tells Spring to create an implementation of the repository dynamically at runtime and inject it. We specify a method _findFlights()_ and bind it at the `/flights` endpoint.
+
+We also created a findFlight method which will return a flight according to id. The path variable {id} will be injected in this case to the param id.
+
+```java
+@RestController
+public class ReservationRestController {
+
+	@Autowired
+	FlightRepository flightRepository;
+
+	@RequestMapping(value="/flights", method = RequestMethod.GET)
+	public List<Flight> findFlights() {
+		return flightRepository.findAll();
+	}
+
+  @RequestMapping(value="/flights/{id}", method=RequestMethod.GET)
+	public Flight findFlight(@PathVariable("id") int id) {
+		return flightRepository.findById(id).get();
+	}
+}
+```
+
+#### saveReservation API
+
+The saveReservations method will be a POST method at `/reservations` and will be used to add a reservation to the existing collection of reservations. We start by creating a CreateReservationRequest DTO class which contains the fields required to create a reservation.
+
+```java
+public class CreateReservationRequest {
+	private int flightId;
+	private String passengerFirstName;
+	private String passengerLastName;
+	private String passengerMiddleName;
+	private String passengerEmail;
+	private String passengerPhone;
+	private String cardNumber;
+	private String expirationDate;
+	private String securityCode;
+}
+```
+
+Afterwards we can create the saveReservation method and map it to `/reservations`. Here we start with retrieving the flight id, and then creating a new Passenger object based on the reservation request details. Afterwards, the PassengerRepository will be used to save the passenger object to the database. Once we have the flight information and passenger information, we can now create the reservation object. We pass the flight and passenger information to the reservation object, and finally save it to the database using the ReservationRepository. It is important to mark this method with **@Transactional** from Spring since we have multiple saves going on and this annotation signifies that either all save operations should happen OR non should happen, in case one fails.
+
+```java
+@RestController
+public class ReservationRestController {
+
+	@Autowired
+	FlightRepository flightRepository;
+
+	@Autowired
+	PassengerRepository passengerRepository;
+
+	@Autowired
+	ReservationRepository reservationRepository;
+
+	@RequestMapping(value="/reservations", method = RequestMethod.POST)
+  @Transactional
+	public Reservation saveReservation(@RequestBody CreateReservationRequest request) {
+        // find the flight based on request flight id
+		Flight flight = flightRepository.findById(request.getFlightId()).get();
+
+		// create a passenger object based on the request object
+		Passenger passenger = new Passenger();
+		passenger.setFirstName(request.getPassengerFirstName());
+		passenger.setLastName(request.getPassengerLastName());
+		passenger.setMiddleName(request.getPassengerMiddleName());
+		passenger.setEmail(request.getPassengerEmail());
+		passenger.setPhone(request.getPassengerPhone());
+
+		// save passenger to database
+		Passenger savedPassenger = passengerRepository.save(passenger);
+
+		// create the reservation
+		Reservation reservation = new Reservation();
+		reservation.setFlight(flight);
+		reservation.setPassenger(savedPassenger);
+		reservation.setCheckedIn(false);
+
+		// save the reservation to database
+		Reservation savedReservation = reservationRepository.save(reservation);
+
+		return savedReservation;
+	}
+}
+```
+
+#### findReservation
+
+The findReservation method will get a reservation by id and will be helpful in the checkin process. From the Reservations collection, we are going to return a reservation that matches the id in the url. To inject the url id to the parameter, we need to use the **@PathVariable** annotation.
+
+```java
+	@RequestMapping(value="/reservations/{id}", method = RequestMethod.GET)
+	public Reservation findReservation(@PathVariable("id") int id) {
+		return reservationRepository.findById(id).get();
+	}
+```
+
+#### updateReservation
+
+The updateReservation method is considered the checkin method, and here is where the client will provide the number of bags to checkin and where the _checkedIn_ flag will be flipped to true. To do this, we need to create an UpdateReservationRequest DTO class that takes the reservation id, checkIn flag, and number of bags.
+
+```java
+public class UpdateReservationRequest {
+	private int id;
+	private boolean checkIn;
+	private int numberOfBags;
+}
+```
+
+We then start with fetching the reservation entity using the id passed from the request objecty and update the numberOfBags and checkIn flag. Afterwards, we save the reservation object to the database using ReservationRepository.
+
+```java
+@RequestMapping(value = "/reservations", method = RequestMethod.PUT)
+	public Reservation updateReservation(@RequestBody UpdateReservationRequest request) {
+		Reservation reservation = reservationRepository.findById(request.getId()).get();
+		reservation.setNumberOfBags(request.getNumberOfBags());
+		reservation.setCheckedIn(request.isCheckIn());
+
+		return reservationRepository.save(reservation);
+	}
+```
+
+#### Configure Data Source
+
+We configured the application.properties. Using this, we can now access our application using `localhost:8080/flightservices`
+
+```
+spring.datasource.url=jdbc:mysql://localhost:3306/reservation
+spring.datasource.username=root
+spring.datasource.password=1234
+server.servlet.context-path=/flightservices
+```
+
+To populate the flight table, we used the following SQL
+
+```sql
+use reservation;
+
+insert into flight values(1,'AA1','American Airlines','AUS',
+'NYC',STR_TO_DATE('09-05-2022', '%m-%d-%Y'),'2022-09-05 03:14:07');
+
+insert into flight values(2,'AA2','American Airlines','AUS',
+'NYC',STR_TO_DATE('09-05-2022', '%m-%d-%Y'),'2022-09-05 05:14:07');
+
+insert into flight values(3,'AA3','American Airlines','AUS',
+'NYC',STR_TO_DATE('09-05-2022', '%m-%d-%Y'),'2022-09-05 06:14:07');
+
+insert into flight values(4,'SW1','South West','AUS',
+'NYC',STR_TO_DATE('09-05-2022', '%m-%d-%Y'),'2022-09-05 07:14:07');
+
+insert into flight values(5,'UA1','United Airlines','NYC',
+'DAL',STR_TO_DATE('09-05-2022', '%m-%d-%Y'),'2022-09-05 10:14:07');
+
+insert into flight values(6,'UA1','United Airlines','NYC',
+'DAL',STR_TO_DATE('09-05-2022', '%m-%d-%Y'),'2022-09-05 10:14:07');
+
+insert into flight values(7,'SW1','South West','AUS',
+'NYC',STR_TO_DATE('09-06-2022', '%m-%d-%Y'),'2022-09-06 07:14:07');
+
+insert into flight values(8,'SW2','South West','AUS',
+'NYC',STR_TO_DATE('09-06-2022', '%m-%d-%Y'),'2022-09-06 09:14:07');
+
+
+insert into flight values(9,'SW3','South West','NYC',
+'DAL',STR_TO_DATE('09-06-2022', '%m-%d-%Y'),'2022-09-06 10:14:07');
+
+insert into flight values(10,'UA1','United Airlines','NYC',
+'DAL',STR_TO_DATE('09-06-2022', '%m-%d-%Y'),'2022-09-06 10:14:07');
+```
+
+If we navigate to `http://localhost:8080/flightservices/flights`, we should get back the list of flights.
+
+#### Filtering flights
+
+As of now, the _findFlights_ method returns all flights. We can filter out the flights by implementing a repository method that will filter out the flights. We do so in FlightRepository and add the following method. Here we map the method to a JPQL query using hte **@Query** annotation. We map the parameters using the **@Param** annotation. The fields that are being used in the query comes from the fields of our Flight entity. Whenever the method is invoked, whatever data comes in to the parameters will be bound to the names in the @Param annotation to be used in the @Query.
+
+```java
+public interface FlightRepository extends JpaRepository<Flight, Integer> {
+	@Query("from Flight where departureCity=:departureCity and arrivalCity=:arrivalCity and dateOfDeparture=:dateOfDeparture")
+	List<Flight> findFlights(@Param("departureCity") String from,@Param("arrivalCity") String to, @Param("dateOfDeparture") Date departureDate);
+}
+```
+
+Afterwards, we can modify the findFlights method in our Rest Controller. Instead of invoking findAll. we can invoke the findFlights method we created.
+
+```java
+	@RequestMapping(value = "/flights", method = RequestMethod.GET)
+	public List<Flight> findFlights(@RequestParam("from") String from, @RequestParam("to") String to,
+			@RequestParam("departureDate") @DateTimeFormat(pattern = "MM-dd-yyyy") Date departureDate) {
+		return flightRepository.findFlights(from, to, departureDate);
+//		return flightRepository.findAll();
+	}
+```
+
+We can test out the filter by sending a post request.
+
+```
+localhost:8080/flightservices/flights?from=AUS&to=NYC&departureDate=09-05-2022
+```
+
+#### Testing the Save Find and Update Reservation
+
+We can test the saveReservation and findReservation endpoints by sending the following via postman. This operation will create a row in both the reservation and passenger table.
+
+```json
+POST: localhost:8080/flightservices/reservations/
+
+{
+    "flightId": 1,
+    "passengerFirstName": "Doge",
+    "passengerLastName": "Doge",
+    "passengerMiddleName": "Doge",
+    "passengerEmail": "doge@doge.com",
+    "passengerPhone": "12345"
+}
+
+GET: localhost:8080/flightservices/reservations/1
+```
+
+For the updateReservation endpoint, we can do a PUT request with the following. This sends back a 200 response along with the updated reservation object.
+
+```json
+PUT: localhost:8080/flightservices/reservations/
+
+{
+    "id": 1,
+    "checkIn": true,
+    "numberOfBags": 5
+}
+```
+
+#### CORS
+
+In order for our angular app to communicate with the REST endpoints, we need to turn on Cross Origin headers. We can do this by using hte **@CrossOrigin** annotation on our controller
+
+```java
+@RestController
+@CrossOrigin
+public class ReservationRestController {
+```
