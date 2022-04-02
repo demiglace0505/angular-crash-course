@@ -1825,3 +1825,308 @@ In order for our angular app to communicate with the REST endpoints, we need to 
 @CrossOrigin
 public class ReservationRestController {
 ```
+
+## Flight Reservation Front End
+
+This flightReservation application will be comprised of the find flights screen where the user can search for a flight. The user can then select a flight wherein they can enter their passenger and card details. Once the details are entered, a backend call will be made which will create a reservation in the database and display a confirmation screen. The four components are:
+
+1. Find Flights
+2. Display Flights
+3. Passenger Details
+4. Confirm Reservation
+
+And we will be creating the reservationService which will be responsible for creating all the backend calls. The important concepts to be used in this use case are Routing, Forms and Data Binding.
+
+After creating the project and generating the components and services, we start with creating the model classes for a search criteria and reservation
+
+```typescript
+export class Criteria {
+  constructor(
+    public from: string,
+    public to: string,
+    public departureDate: string
+  ) {}
+}
+
+export class Reservation {
+  constructor(
+    public passengerFirstName: string,
+    public passengerLastName: string,
+    public passengerMiddleName: string,
+    public passengerEmail: string,
+    public passengerPhone: string,
+    public cardNumber: string,
+    public expirationDate: string,
+    public securityCode: string,
+    public flightId: string
+  ) {}
+}
+```
+
+Afterwards we proceed on writing the service layer. The reservation service will be responsible for fetching the flight information. Another backend call will be for fetching a single flitch details. The last call will be for saving a reservation.
+
+```typescript
+export class ReservationService {
+  flightUrl: string = "http://localhost:8080/flightservices/flights";
+  reservationUrl: string = "http://localhost:8080/flightservices/reservations";
+  data: any;
+
+  constructor(private _httpClient: HttpClient) {}
+
+  public getFlights(criteria: Criteria): any {
+    return this._httpClient.get(
+      `${this.flightUrl}?from=${criteria.from}&to=${criteria.to}&departureDate=${criteria.departureDate}`
+    );
+  }
+
+  public getFlight(id: number): any {
+    return this._httpClient.get(`${this.flightUrl}/${id}`);
+  }
+
+  public saveReservation(reservation: Reservation): any {
+    return this._httpClient.post(this.reservationUrl, reservation);
+  }
+}
+```
+
+Afterwards, we can configure routing. In the app-routing module, we can add the routes. For the PassengerDetails component route, we add a placeholder for the passenger's id so that we can retrieve the id into the component. The same is done for the confirm component.
+
+```typescript
+const routes: Routes = [
+  {
+    path: '',
+    redirectTo: '',
+    pathMatch: 'full',
+  },
+  {
+    path: 'findFlights',
+    component: FindFlightsComponent,
+  },
+  {
+    path: 'displayFlights',
+    component: DisplayFlightsComponent,
+  },
+  {
+    path: 'passengerDetails/:id',
+    component: PassengerDetailsComponent,
+  },
+  {
+    path: 'confirm/:id',
+    component: ConfirmComponent,
+  },
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+})
+```
+
+#### Find Flights Component
+
+We then start implementing the Find Flights component. We start by defining the Criteria field. We then inject our ReservationService and Router to this component. The onSubmit method calls our service's getFlights() method wherein we pass a criteria and its response properties will be sent to the next component. We do this by putting the data into the ReservationService.
+
+```typescript
+export class FindFlightsComponent implements OnInit {
+  criteria: Criteria = new Criteria("", "", "");
+
+  constructor(private service: ReservationService, private router: Router) {}
+
+  ngOnInit(): void {}
+
+  public onSubmit() {
+    this.service.getFlights(this.criteria).subscribe((res: any) => {
+      this.service.data = res;
+      console.log(res);
+      this.router.navigate(["/displayFlights"]);
+    });
+  }
+}
+```
+
+We can use the following html template:
+
+```html
+<html>
+  <head>
+    <title>Find Flights</title>
+  </head>
+  <body>
+    <h2>Find Flights:</h2>
+    <form #findFlightsForm="ngForm" (ngSubmit)="onSubmit()">
+      From: <input type="text" [(ngModel)]="criteria.from" name="from" /> To:
+      <input type="text" [(ngModel)]="criteria.to" name="to" /> Departure Date:
+      <input
+        type="text"
+        [(ngModel)]="criteria.departureDate"
+        name="departureDate"
+      />
+      <input type="submit" value="search" />
+    </form>
+  </body>
+</html>
+<router-outlet></router-outlet>
+```
+
+At this point, we can run the application. However, before doing so, we need to update the App Module to import HttpClientModule, FormsModule and add a provider to our ReservationService. We also changed the bootstrap component into FindFlightsComponent.
+
+```typescript
+@NgModule({
+  declarations: [
+    AppComponent,
+    FindFlightsComponent,
+    DisplayFlightsComponent,
+    PassengerDetailsComponent,
+    ConfirmComponent,
+  ],
+  imports: [BrowserModule, AppRoutingModule, FormsModule, HttpClientModule],
+  providers: [ReservationService],
+  bootstrap: [FindFlightsComponent],
+})
+```
+
+#### Display Flights component
+
+We can now proceed on displaying the flights that are fetched from the backend. Here the user can select a flight from a list. We define a _data_ field which we populate using the data we received from the previous section. The onSelect() method will take the id of the selected flight and pass it to the next view.
+
+```typescript
+export class DisplayFlightsComponent implements OnInit {
+  data: any;
+  constructor(private service: ReservationService, private router: Router) {}
+
+  ngOnInit(): void {
+    this.data = this.service.data;
+  }
+
+  public onSelect(id: number): any {
+    this.router.navigate([`/passengerDetails/${id}`]);
+  }
+}
+```
+
+```html
+<html>
+  <head>
+    <title>Flights</title>
+  </head>
+  <body>
+    <h2>Flights:</h2>
+    <table>
+      <tr>
+        <th>Airlines</th>
+        <th>Departure City</th>
+        <th>Arrival City</th>
+        <th>Departure Date Time</th>
+      </tr>
+      <tr *ngFor="let flight of data">
+        <td>{{ flight.operatingAirlines }}</td>
+        <td>{{ flight.departureCity }}</td>
+        <td>{{ flight.arrivalCity }}</td>
+        <td>{{ flight.estimatedTimeOfDeparture }}</td>
+        <td><a (click)="onSelect(flight.id)">Select</a></td>
+      </tr>
+    </table>
+  </body>
+</html>
+```
+
+#### Passenger Details Component
+
+In the Passenger Details template, we display the flight details and passenger details. We will be using the flight id in the url from the previous section and use it to fetch the flight details. For the passenger details, we will be using a form and when submitted, the backend call will be made to save the reservation.
+
+To retrieve the id from the url, we can use the **AcivatedRoute** component. We use the ngOnInit() method to make the backend call and fetch the backend details. We can use the ActivatedRoute's snapshot.params.id property.
+
+We then proceed on implementing the onSubmit() method. We start with defining a field for the reservation object using our Reservation model. The reservation object will be filled in when the forms are filled because they are using 2 way binding with **ngModel**. When the saveReservation() method is called, it returns back a reservation id which we then navigate to.
+
+```typescript
+export class PassengerDetailsComponent implements OnInit {
+  flightData: any;
+  reservation: Reservation = new Reservation(
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  );
+
+  constructor(
+    private service: ReservationService,
+    private router: Router,
+    private route: ActivatedRoute
+  ) {}
+
+  ngOnInit(): void {
+    this.service
+      .getFlight(Number.parseInt(this.route.snapshot.params.id))
+      .subscribe((res: any) => {
+        this.flightData = res;
+      });
+  }
+
+  public onSubmit(): any {
+    this.reservation.flightId = this.flightData.id;
+    this.service.saveReservation(this.reservation).subscribe((res: any) => {
+      this.router.navigate(["/confirm", res.id]);
+    });
+  }
+}
+```
+
+```html
+<html>
+  <head>
+    <title>Complete Reservation</title>
+  </head>
+  <body>
+    <h2>Complete Reservation:</h2>
+    <h2>Flight Details:</h2>
+    Airline: {{ flightData?.operatingAirlines }}<br />
+    Departure City: {{ flightData?.departureCity }}<br />
+    Arrival City: {{ flightData?.arrivalCity }}<br />
+    Departue Date : {{ flightData?.dateOfDeparture }}<br />
+
+    <h2>Passenger Details:</h2>
+    <form #passengerForm="ngForm" (ngSubmit)="onSubmit()">
+      <pre>
+        First Name:<input type="text" name="passengerFirstName" [(ngModel)]="reservation.passengerFirstName"/>
+        Last Name:<input type="text" name="passengerLastName" [(ngModel)]="reservation.passengerLastName"/>
+
+        Middle Name:<input type="text" name="passengerMiddleName" [(ngModel)]="reservation.passengerMiddleName"/>
+
+        Email:<input type="text" name="passengerEmail" [(ngModel)]="reservation.passengerEmail"/>
+        Phone:<input type="text" name="passengerPhone" [(ngModel)]="reservation.passengerPhone"/>
+        Card Number:<input type="text" name="cardNumber" [(ngModel)]="reservation.cardNumber"/>
+        Expiry Date:<input type="text" name="expirationDate" [(ngModel)]="reservation.cardNumber"/>
+        Security Code:<input type="text" name="securityCode" [(ngModel)]="reservation.securityCode"/>
+        <input type="submit" value="confirm"/>
+      </pre>
+    </form>
+  </body>
+</html>
+```
+
+#### Confirmation Component
+
+To display the reservation id, we can use ActivatedRoute once again.
+
+```typescript
+export class ConfirmComponent implements OnInit {
+  reservationId: number = 0;
+  constructor(private route: ActivatedRoute) {}
+
+  ngOnInit(): void {
+    this.reservationId = Number.parseInt(this.route.snapshot.params.id);
+  }
+}
+```
+
+```html
+<b>
+  Your Flight reservation is complete.The confirmation code is: {{ reservationId
+  }}
+</b>
+```
