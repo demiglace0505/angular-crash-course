@@ -2130,3 +2130,153 @@ export class ConfirmComponent implements OnInit {
   }}
 </b>
 ```
+
+## Flight Check Front End
+
+For this section, we will be working with the flightCheckIn project. This application will contain a component asking for a reservation id. Once the user enters, a backend call will be made to fetch the reservation details with the given id. The reservation details and passenger details will then be given and will ask the user how many bags to check in. Once the user checks in, the reservation object will be updated with the number of bags, and the checkedIn flag will be flipped to true. The components for this project will be
+
+1. Start Check In
+2. Check In
+3. Confirm Check In
+
+There will be one service that will be making backend calls for fetching a reservation and updating the reservation. The method checkIn() will receive a checkInRequest object which will contain the check in details and number of bags.
+
+```typescript
+export class CheckinService {
+  reservationUrl: string = "http://localhost:8080/flightservices/reservations/";
+  reservationData: any;
+  constructor(private _httpClient: HttpClient) {}
+
+  public getReservation(id: number): any {
+    return this._httpClient.get(`${this.reservationUrl}/${id}`);
+  }
+
+  public checkIn(checkInRequest: any): any {
+    return this._httpClient.put(this.reservationUrl, checkInRequest);
+  }
+}
+```
+
+Afterwards, we set up the routes.
+
+```typescript
+const routes: Routes = [
+  {
+    path: '',
+    redirectTo: '',
+    pathMatch: 'full',
+  },
+  {
+    path: 'startCheckIn',
+    component: StartcheckinComponent,
+  },
+  {
+    path: 'checkIn',
+    component: CheckinComponent,
+  },
+  {
+    path: 'confirm',
+    component: ConfirmComponent,
+  },
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+})
+```
+
+We can then proceed on implementing the components. We start with the CheckIn component. We create the onClick() method which is mapped to a click event. This method will call the getReservation service and pass into it the reservationId from the input form. We update the reservationData field of our service with the response object.
+
+```typescript
+export class StartcheckinComponent implements OnInit {
+  reservationId!: number;
+  constructor(private service: CheckinService, private router: Router) {}
+
+  ngOnInit(): void {}
+
+  public onClick() {
+    this.service.getReservation(this.reservationId).subscribe((res: any) => {
+      this.service.reservationData = res;
+      this.router.navigate(["/checkIn"]);
+    });
+  }
+}
+```
+
+```html
+<h1>Flight CheckIn</h1>
+<button routerLink="/startCheckIn">Start</button>
+<router-outlet></router-outlet>
+```
+
+```html
+<h1>Enter the reservation id</h1>
+<input type="text" [(ngModel)]="reservationId" /><br />
+<button (click)="onClick()">Next</button>
+```
+
+To bootstrap the application, we will need to update our app module to include the imports and provide services.
+
+```typescript
+@NgModule({
+  declarations: [
+    AppComponent,
+    StartcheckinComponent,
+    CheckinComponent,
+    ConfirmComponent,
+  ],
+  imports: [BrowserModule, AppRoutingModule, FormsModule, HttpClientModule],
+  providers: [CheckinService],
+  bootstrap: [AppComponent],
+})
+export class AppModule {}
+```
+
+Afterwards, we can work on the checkin component. This is where the user can review the reservation information, enter the number of bags and check in. The _data_ field and _noOfBags_ are the expected fields for the component. In the ngOnInit(), we need to assign the data which we retrieve from the service.
+
+```typescript
+export class CheckinComponent implements OnInit {
+  noOfbags!: Number;
+  data: any;
+
+  constructor(private service: CheckinService, private router: Router) {}
+
+  ngOnInit(): void {
+    this.data = this.service.reservationData;
+  }
+
+  public checkIn() {
+    let request = {
+      id: this.data.id,
+      checkIn: true,
+      numberOfBags: this.noOfbags,
+    };
+    this.service.checkIn(request).subscribe((res: any) => {
+      this.router.navigate(["/confirm"]);
+    });
+  }
+}
+```
+
+```html
+<h1>Review Details</h1>
+<h2>Flight Details:</h2>
+Airlines: {{ data?.flight?.operatingAirlines }}<br />
+Flight No: {{ data?.flight?.flightNumber }}<br />
+Departure City: {{ data?.flight?.departureCity }}<br />
+Arrival City: {{ data?.flight?.arrivalCity }}<br />
+Date Of Departure: {{ data?.flight?.dateOfDeparture }}<br />
+Estimated Departure Time: {{ data?.flight?.estimatedDepartureTime }}<br />
+<h2>Passenger Details:</h2>
+
+First Name: {{ data?.passenger?.firstName }}<br />
+Last Name: {{ data?.passenger?.lastName }}<br />
+Email : {{ data?.passenger?.email }}<br />
+Phone: {{ data?.passenger?.phone }}<br />
+Enter the number of bags to check in:<input
+  type="text"
+  [(ngModel)]="noOfbags"
+/>
+<button (click)="checkIn()">CheckIn</button>
+```
